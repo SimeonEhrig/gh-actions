@@ -39,6 +39,8 @@ runs:
         julia --project=docs/ /tmp/integration_test_tools/.ci/CI/src/SetupDevEnv.jl
         julia --project=docs/ -e 'import Pkg; Pkg.instantiate()'
       shell: bash
+      env:
+        CI_TEST_TYPE: "unit"
     - name: Build and deploy
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
