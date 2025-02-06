@@ -1,0 +1,64 @@
+name: 'Build Documentation'
+description: 'Build and Deploy Documentation'
+
+inputs:
+  github-token:
+    description: 'pass secrets.GITHUB_TOKEN'
+    required: true
+  julia-version:
+    description: 'Julia Version'
+    required: false
+    default: '1.10'
+  github-tools-url:
+    description: 'URL of the GitHub repository to download the CI tools'
+    default: 'https://github.com/QEDjl-project/QuantumElectrodynamics.jl.git'
+  github-tools-branch:
+    description: 'branch of the GitHub repository to download the CI tools'
+    default: 'dev'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ inputs.julia-version }}
+    - name: clone integration test tools
+      run: |
+        git clone --depth 1 -b ${INPUT_GITHUB_TOOLS_BRANCH} ${INPUT_GITHUB_TOOLS_URL} /tmp/integration_test_tools/
+      shell: bash
+      env:
+        INPUT_GITHUB_TOOLS_URL: ${{ inputs.github-tools-url }}
+        INPUT_GITHUB_TOOLS_BRANCH: ${{ inputs.github-tools-branch }}
+    # by default GitHub Actions does strange git merge with the Pull Request
+    # therefore clone vanilla function branch
+    - name: clone real function branch
+      if: ${{ github.event_name == 'pull_request' }}
+      uses: actions/checkout@v4
+      with:
+        ref: "${{ github.event.pull_request.head.sha }}"
+        path: "real_branch"
+    - name: set dev dependencies
+      run: |
+        if [ -d "real_branch" ]; then
+          cd real_branch
+          export CI_COMMIT_MESSAGE="$(git log --no-merges --format=%B -n 1 ${{ github.event.pull_request.head.sha }})"
+          echo -e "Commit message: \n${CI_COMMIT_MESSAGE}\n\n"
+          echo "CI_COMMIT_MESSAGE=$CI_COMMIT_MESSAGE" >> $GITHUB_ENV
+          cd .. && rm -r real_branch
+        fi
+        $(julia --project=. /tmp/integration_test_tools/.ci/CI/src/GetProjectNameVersionPath.jl)
+        echo "CI_DEV_PKG_NAME -> $CI_DEV_PKG_NAME"
+        echo "CI_DEV_PKG_VERSION -> $CI_DEV_PKG_VERSION"
+        echo "CI_DEV_PKG_PATH -> $CI_DEV_PKG_PATH"
+        julia --project=docs/ /tmp/integration_test_tools/.ci/CI/src/SetupDevEnv.jl
+        julia --project=docs/ -e 'import Pkg; Pkg.instantiate()'
+      shell: bash
+      env:
+        CI_TEST_TYPE: "unit"
+    - name: Build and deploy
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: julia --project=docs/ docs/make.jl
+      shell: bash
+
