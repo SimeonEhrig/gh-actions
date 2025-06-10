@@ -56,14 +56,14 @@ runs:
       run: |
         julia --project=/tmp/integration_test_tools/.ci/CI/ -e 'import Pkg; Pkg.instantiate()'
         $(julia --project=/tmp/integration_test_tools/.ci/CI/ /tmp/integration_test_tools/.ci/CI/script/get_project_name_version_path.jl $PWD)
-        echo "CI_DEV_PKG_NAME -> $CI_DEV_PKG_NAME"
-        echo "CI_DEV_PKG_VERSION -> $CI_DEV_PKG_VERSION"
-        echo "CI_DEV_PKG_PATH -> $CI_DEV_PKG_PATH"
+        echo "CI_QED_DEV_PKG_NAME -> $CI_QED_DEV_PKG_NAME"
+        echo "CI_QED_DEV_PKG_VERSION -> $CI_QED_DEV_PKG_VERSION"
+        echo "CI_QED_DEV_PKG_PATH -> $CI_QED_DEV_PKG_PATH"
         julia --project=/tmp/integration_test_tools/.ci/CI/ /tmp/integration_test_tools/.ci/CI/script/setup_dev_env.jl docs/
         julia --project=docs/ -e 'import Pkg; Pkg.instantiate()'
       shell: bash
       env:
-        CI_TEST_TYPE: "unit"
+        CI_QED_TEST_TYPE: "unit"
     - name: Build and deploy
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
